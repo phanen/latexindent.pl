@@ -27,6 +27,28 @@ use Getopt::Long;    # to get the switches/options/flags
 use lib $FindBin::RealBin;
 use LatexIndent::Document;
 
+use utf8;
+use Encode   qw/ encode decode find_encoding /;
+
+use LatexIndent::LogFile         qw/$logger $consoleOutCP/;
+use LatexIndent::CommandLineArgs qw/commandlineargs_with_encode @new_args/;
+
+commandlineargs_with_encode();
+
+$logger = LatexIndent::Logger->new();
+
+print "INFO:  Command Line:\n       @new_args\n";
+print "       Command Line Arguments:\n       " . join(", ", @ARGV) . "\n";
+$logger->info("*Command Line:");
+$logger->info("@new_args");
+$logger->info("Command Line Arguments:\n" . join(", ", @ARGV) );
+
+if ($^O eq 'MSWin32') {
+    my $encoding_sys = Win32::GetACP(); #https://stackoverflow.com/a/63868721
+    print "INFO:  ANSI Code Page:  $encoding_sys\n"; #The values of ACP in the registry HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Nls\CodePage
+    $logger->info("* \nANSI Code Page: $encoding_sys");
+}
+
 # get the options
 my %switches = ( readLocalSettings => 0 );
 
@@ -86,4 +108,11 @@ my $document = bless(
     "LatexIndent::Document"
 );
 $document->latexindent( \@ARGV );
+
+if ($^O eq 'MSWin32') {
+    require Win32;
+    import Win32;
+    Win32::SetConsoleOutputCP($consoleOutCP);
+    print "\n\nINFO:  Restore the console output code page: $consoleOutCP\n";
+}
 exit(0);

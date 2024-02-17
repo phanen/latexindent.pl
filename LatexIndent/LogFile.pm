@@ -24,8 +24,23 @@ use Exporter              qw/import/;
 use LatexIndent::Switches qw/%switches/;
 use LatexIndent::Version  qw/$versionNumber $versionDate/;
 use Encode                qw/decode/;
-our @EXPORT_OK = qw/process_switches $logger/;
+our @EXPORT_OK = qw/process_switches $logger $consoleOutCP/;
 our $logger;
+
+use utf8;
+binmode(STDOUT, ":encoding(utf8)");
+
+use LatexIndent::FileOperation qw/copy_with_encode exist_with_encode open_with_encode  zero_with_encode read_yaml_with_encode isdir_with_encode mkdir_with_encode/;
+
+our $consoleOutCP;
+if ($^O eq 'MSWin32') {
+    require Win32;
+    import Win32;
+    $consoleOutCP = Win32::GetConsoleOutputCP();
+    print "INFO:  Current console output code page: $consoleOutCP \n";
+    Win32::SetConsoleOutputCP(65001);
+    print "INFO:  Change the Current console output code page to 65001\n";
+}
 
 sub process_switches {
 
@@ -133,10 +148,10 @@ ENDQUOTE
     my $cruftDirectoryCreation = 0;
 
     # if cruft directory does not exist, create it
-    if ( !( -d ${$self}{cruftDirectory} ) ) {
-        eval { make_path( ${$self}{cruftDirectory} ) };
+    if ( !( isdir_with_encode( ${$self}{cruftDirectory} ) ) ) {
+        eval { mkdir_with_encode( ${$self}{cruftDirectory} ) };
         if ($@) {
-            $logger->fatal( "*Could not create cruft directory " . decode( "utf-8", ${$self}{cruftDirectory} ) );
+            $logger->fatal( "*Could not create cruft directory " . ${$self}{cruftDirectory} );
             $logger->fatal("Exiting, no indentation done.");
             $self->output_logfile();
             exit(6);
@@ -147,7 +162,7 @@ ENDQUOTE
     my $logfileName = ( $switches{cruftDirectory} ? ${$self}{cruftDirectory} . "/" : '' )
         . ( $switches{logFileName} || "indent.log" );
 
-    $logfileName = decode( "utf-8", $logfileName );
+    $logfileName = $logfileName;
 
     # details of the script to log file
     $logger->info("*$FindBin::Script version $versionNumber, $versionDate, a script to indent .tex files");
@@ -255,7 +270,7 @@ ENDQUOTE
     }
 
     $logger->info("*Directory for backup files and $logfileName:");
-    $logger->info( $switches{cruftDirectory} ? decode( "utf-8", ${$self}{cruftDirectory} ) : ${$self}{cruftDirectory} );
+    $logger->info( $switches{cruftDirectory} ? ${$self}{cruftDirectory} : ${$self}{cruftDirectory} );
     $logger->info("cruft directory creation: ${$self}{cruftDirectory}") if $cruftDirectoryCreation;
 
     # output location of modules
